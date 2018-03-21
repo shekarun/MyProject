@@ -1,0 +1,52 @@
+public class OrderHeaderHandler {
+    
+    public static void insertOrderHeader(list<Order_Header__c> newlist){
+        set<string> acno=new set<string>();
+        set<string> acst=new set<string>();
+        for(Order_Header__c od:newlist){
+            if(od.Account_Number__c != null && od.Ship_To_Number__c!=null){
+                acno.add(od.Account_Number__c);
+                acst.add(od.Ship_To_Number__c);
+            }
+        }
+        map<string,Account> acmap=new map<string,Account>();
+        // map<string,Account> acmap1=new map<string,Account>();
+        list<Account> accs=[Select Id,Party_Rep__c,AccountNumber, Store_Number__c,ownerId,BPCS_ID__c from Account where AccountNumber in:acno AND Store_Number__c in:acst  ];
+        for(Account am:accs){
+            
+            acmap.put(am.BPCS_ID__c,am); 
+        }  
+        
+        Map<String,User> mapOfUser = new Map<String,User>();
+        // map<id,user> mapofacc=new map<id,user>();
+        for(User usr : [Select Id,EmployeeNumber from User]){        
+            mapOfUser.put(usr.EmployeeNumber,usr);
+            //   mapofacc.put(usr.Id,usr);
+        }
+        Account acn;
+        user u;
+        string bp;
+        for(Order_Header__c ord :newlist){
+            
+            if(ord.Account_Number__c!=null && ord.Ship_To_Number__c!=null){
+                bp=ord.Account_Number__c+'-'+ord.Ship_To_Number__c; 
+               // system.debug('bpscId===>'+bp);
+                boolean test1=acmap.containsKey(bp);                            
+                if(acmap.containsKey(bp) && acmap.get(bp).AccountNumber==ord.Account_Number__c &&
+                   acmap.get(bp).Store_Number__c==ord.Ship_To_Number__c){                      
+                       acn=acmap.get(bp);                     
+                       string no=acn.Party_Rep__c;
+                       string emp=no.split('-')[0];                     
+                       if(mapofuser.containsKey(emp)){
+                           ord.OwnerId=mapofuser.get(emp).id;
+                           system.debug('ownerId====>'+ord.ownerId);
+                       }
+                       else{
+                           ord.OwnerId=acn.OwnerId;
+                           system.debug('existingOwnerId====>'+ord.OwnerId);
+                       }
+                   }                  
+            }                              
+        }
+    }        
+}
